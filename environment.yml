@@ -1,0 +1,13 @@
+name: AEmotion
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.7
+  - numpy
+  - matplotlib
+  - librosa
+  - pylint
+  - autopep8
+  - notebook
+  - jupyterlab
