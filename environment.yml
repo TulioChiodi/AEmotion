@@ -12,3 +12,7 @@ dependencies:
   - autopep8
   - notebook
   - jupyterlab
+  - seaborn
+  - pip
+  - pip:
+      - tensorflow
