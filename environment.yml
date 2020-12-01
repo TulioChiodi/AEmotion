@@ -13,6 +13,7 @@ dependencies:
   - notebook
   - jupyterlab
   - seaborn
+  - python-wget
   - pip
   - pip:
       - tensorflow
