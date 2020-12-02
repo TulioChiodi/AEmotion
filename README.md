@@ -1,5 +1,4 @@
-# Individualized HRTF Synthesis
-
+# AEmotion
 <p align="left">
   <a href="https://github.com/TulioChiodi/AEmotion/releases/" target="_blank">
     <img alt="GitHub release" src="https://img.shields.io/github/v/release/TulioChiodi/AEmotion?include_prereleases&style=flat-square">
