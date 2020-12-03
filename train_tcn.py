@@ -19,9 +19,9 @@ from keras.utils import to_categorical
 
 
 # %% load dataset
-df = pd.read_csv('RAVDESS_dataframe.csv')
+df = pd.read_csv('RAVDESS_complete.csv')
 df = df.dropna()
-df.isnull().any() # print
+# df.isnull().any() # print
 
 # %% Filter inputs and targets
 # Split between train and test 
@@ -31,26 +31,23 @@ x_train, x_test, y_train, y_test = train_test_split(df.drop(['path','labels','ge
                                                     shuffle=True,
                                                     random_state=42)
 # Input normalization
-# %% Scale data function (0 ~ 1))
-def scale_dataset(x_in):
-    scaler = MinMaxScaler(feature_range=(0,1))    
-    y_out = scaler.fit_transform(x_in)    
-    return y_out
+def scale_dataset(x_in, mean=None, std=None):
+    print(mean)
+    if mean is None or std is None:
+        mean = np.mean(x_in, axis=0)
+        std = np.std(x_in, axis=0)
+    y_out = (x_in - mean)/std
+    return y_out, mean, std
 
-x_train = scale_dataset(x_train)
-x_test = scale_dataset(x_test)
+x_train, mean_in, std_in = scale_dataset(x_train)
+x_test = scale_dataset(x_test, mean_in, std_in)[0]
 
-# x_train = np.array(x_train)
-# y_train = np.array(y_train)
-# x_test = np.array(x_test)
-# y_test = np.array(y_test)
-
-# Reshape to keras tensor
+#  Reshape to keras tensor
 x_train = np.expand_dims(x_train, axis=2)
 x_test = np.expand_dims(x_test, axis=2)
 x_train = x_train.astype('float32')
 x_test = x_test.astype('float32')
-
+ 
 lb = LabelEncoder()
 y_train = to_categorical(lb.fit_transform(y_train))
 y_test = to_categorical(lb.fit_transform(y_test))
@@ -62,8 +59,8 @@ y_test = np.expand_dims(y_test, axis=2)
 model = compiled_tcn(return_sequences=False,
                     num_feat=1,
                     num_classes=y_train.shape[1],
-                    nb_filters=20,
-                    kernel_size=8,
+                    nb_filters=10,
+                    kernel_size=5,
                     dilations=[2 ** i for i in range(9)],
                     nb_stacks=6,
                     max_len=x_train[0:1].shape[1],
