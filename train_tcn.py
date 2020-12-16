@@ -12,18 +12,19 @@ import seaborn as sb
 from tcn import TCN, compiled_tcn, tcn_full_summary
 from keras_one_cycle_clr.keras_one_cycle_clr import CLR, OneCycle
 
+import tensorflow as tf
 from tensorflow.keras import Input, Model
 from tensorflow.keras.layers import Dense, Dropout, Embedding
 from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.models import load_model, model_from_json
+print("Tensorflow - Número de GPUs encontradas: ", len(tf.config.experimental.list_physical_devices('GPU')) )
+
 
 # utils
 import numpy as np
 import pickle
 import matplotlib.pyplot as plt
-import tensorflow as tf
-print("Tensorflow - Número de GPUs encontradas: ", len(tf.config.experimental.list_physical_devices('GPU')) )
 
 
 # %% load dataset
