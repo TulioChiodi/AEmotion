@@ -1,38 +1,45 @@
 # train NN to classify speech emotion 
 
 # %% import stuff
-import pandas as pd
-import numpy as np
-
 # sklearn
+from sklearn import metrics
 from sklearn.metrics import confusion_matrix, accuracy_score, classification_report
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import MinMaxScaler
+import seaborn as sb
+# Network
+from tcn import TCN, compiled_tcn, tcn_full_summary
+from keras_one_cycle_clr.keras_one_cycle_clr import CLR, OneCycle
 
-# others
-from tcn import TCN, compiled_tcn
 from tensorflow.keras import Input, Model
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.callbacks import EarlyStopping
-from keras.utils import to_categorical
+from tensorflow.keras.layers import Dense, Dropout, Embedding
+from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.models import load_model, model_from_json
+
+# utils
+import numpy as np
+import pickle
+import matplotlib.pyplot as plt
+import tensorflow as tf
+print("Tensorflow - Número de GPUs encontradas: ", len(tf.config.experimental.list_physical_devices('GPU')) )
 
 
 # %% load dataset
-df = pd.read_csv('RAVDESS_complete.csv')
-df = df.dropna()
-# df.isnull().any() # print
+f = open('features.pckl', 'rb')
+X, y = pickle.load(f)
+f.close()
 
 # %% Filter inputs and targets
 # Split between train and test 
-x_train, x_test, y_train, y_test = train_test_split(df.drop(['path','labels','gender','emotion'], axis=1),
-                                                    df.labels,
-                                                    test_size=0.25,
+x_train, x_test, y_train, y_test = train_test_split(X,
+                                                    y,
+                                                    test_size=0.33,
                                                     shuffle=True,
                                                     random_state=42)
-# Input normalization
+# %% Input normalization
 def scale_dataset(x_in, mean=None, std=None):
-    print(mean)
     if mean is None or std is None:
         mean = np.mean(x_in, axis=0)
         std = np.std(x_in, axis=0)
@@ -42,40 +49,119 @@ def scale_dataset(x_in, mean=None, std=None):
 x_train, mean_in, std_in = scale_dataset(x_train)
 x_test = scale_dataset(x_test, mean_in, std_in)[0]
 
-#  Reshape to keras tensor
+
+# %% Reshape to keras tensor
 x_train = np.expand_dims(x_train, axis=2)
 x_test = np.expand_dims(x_test, axis=2)
-x_train = x_train.astype('float32')
-x_test = x_test.astype('float32')
+# x_train = x_train.astype('float32')
+# x_test = x_test.astype('float32')
  
-lb = LabelEncoder()
-y_train = to_categorical(lb.fit_transform(y_train))
-y_test = to_categorical(lb.fit_transform(y_test))
-y_train = np.expand_dims(y_train, axis=2)
-y_test = np.expand_dims(y_test, axis=2)
+# lb = LabelEncoder()
+# y_train = to_categorical(lb.fit_transform(y_train))
+# y_test = to_categorical(lb.fit_transform(y_test))
+# y_train = np.expand_dims(y_train, axis=2)
+# y_test = np.expand_dims(y_test, axis=2)
+
+
+# %% CLR parameters
+batch_size = 16
+epochs = 35
+max_m = 0.98
+base_m = 0.85
+
+# calling it 
+clr = CLR(cyc = 2,
+            lr_range=(0.01, 0.00005),
+            momentum_range=(0.85, 0.98),
+            reset_on_train_begin=True,
+            record_frq=10)
+
+clr.test_run(epochs)
+plt.savefig("Network/LR_schedule.pdf", bbox_inches='tight')
 
 
 # %% Train TCN
+
 model = compiled_tcn(return_sequences=False,
-                    num_feat=1,
-                    num_classes=y_train.shape[1],
-                    nb_filters=10,
-                    kernel_size=5,
-                    dilations=[2 ** i for i in range(9)],
-                    nb_stacks=6,
+                    num_feat=x_train.shape[2],
+                    num_classes=7,
+                    nb_filters=64,
+                    kernel_size=8,
+                    dilations=[2 ** i for i in range(8)], 
+                    nb_stacks=2,
+                    dropout_rate=0.2,
+                    use_batch_norm=True,
                     max_len=x_train[0:1].shape[1],
                     use_skip_connections=True,
-                    opt='rmsprop',
-                    lr=5e-4,
-                    )
-
-print(f'x_train.shape = {x_train.shape}')
-print(f'y_train.shape = {y_train.shape}')
-print(f'x_test.shape = {x_test.shape}')
-print(f'y_test.shape = {y_test.shape}')
+                    use_layer_norm=True,
+                    opt='rmsprop')
 
 model.summary()
-model.fit(x_train, y_train.squeeze().argmax(axis=1), epochs=100,
-        validation_data=(x_test, y_test.squeeze().argmax(axis=1)))
+cnnhistory = model.fit(x_train, y_train,
+                        batch_size = batch_size,
+                        validation_data=(x_test, y_test),
+                        epochs = epochs,
+                        callbacks=[clr])
+
+
+# %% Save it all
+# get model as json string and save to file
+model_as_json = model.to_json()
+with open('Network/model.json', "w") as json_file:
+    json_file.write(model_as_json)
+# save weights to file (for this format, need h5py installed)
+model.save_weights('Network/weights.h5')
+
+
+
+# %%
+h = plt.figure()
+plt.plot(cnnhistory.history['loss'])
+plt.plot(cnnhistory.history['val_loss'])
+plt.title('Loss')
+plt.ylabel('loss')
+plt.xlabel('epoch')
+plt.legend(['Train', 'Test'], loc='upper right')
+plt.grid()
+plt.show()
+h.savefig("Network/Loss.pdf", bbox_inches='tight')
+
+
+h = plt.figure()
+plt.plot(cnnhistory.history['accuracy'])
+plt.plot(cnnhistory.history['val_accuracy'])
+plt.title('Accuracy')
+plt.ylabel('accuracy')
+plt.xlabel('epoch')
+plt.legend(['Train', 'Test'], loc='lower right')
+plt.grid()
+plt.show()
+h.savefig("Network/Accuracy.pdf", bbox_inches='tight')
+
+
+
+# %% load model 
+# load model from file
+loaded_json = open('Network/model.json', 'r').read()
+reloaded_model = model_from_json(loaded_json, custom_objects={'TCN': TCN})
+
+# restore weights
+reloaded_model.load_weights('Network/weights.h5')
+
+
+
+# %% Confusion Matrix
+lb = LabelEncoder()
+pred = np.round(model.predict(x_test, verbose=1))
+pred = pred.squeeze().argmax(axis=1)
+new_y_test = y_test.astype(int)
+
+mtx = confusion_matrix(new_y_test, pred)
+
+h = plt.figure()
+sb.heatmap(mtx, annot = True, fmt ='d')
+plt.title('Confusion matrix')
+h.savefig("Network/Confusion.pdf", bbox_inches='tight')
+
 
 # %%

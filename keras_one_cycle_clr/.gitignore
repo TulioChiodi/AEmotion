@@ -1,0 +1,10 @@
+.idea
+debugs
+keras_one_cycle_clr/__pycache__
+notebooks/.ipynb_checkpoints
+.DS_Store
+notebooks
+sphinx/build
+sphinx/Makefile
+sphinx/make.bat
+
