@@ -7,7 +7,7 @@ from sklearn.metrics import confusion_matrix, accuracy_score, classification_rep
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import MinMaxScaler
-import seaborn as sb
+
 # Network
 from tcn import TCN, compiled_tcn, tcn_full_summary
 from keras_one_cycle_clr.keras_one_cycle_clr import CLR, OneCycle
@@ -20,11 +20,11 @@ from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.models import load_model, model_from_json
 print("Tensorflow - Número de GPUs encontradas: ", len(tf.config.experimental.list_physical_devices('GPU')) )
 
-
 # utils
 import numpy as np
 import pickle
 import matplotlib.pyplot as plt
+import seaborn as sb
 
 
 # %% load dataset
@@ -50,6 +50,9 @@ def scale_dataset(x_in, mean=None, std=None):
 x_train, mean_in, std_in = scale_dataset(x_train)
 x_test = scale_dataset(x_test, mean_in, std_in)[0]
 
+f = open('Network/input_preprocess.pckl', 'wb')
+pickle.dump([mean_in, std_in], f)
+f.close()
 
 # %% Reshape to keras tensor
 x_train = np.expand_dims(x_train, axis=2)
@@ -66,15 +69,10 @@ x_test = np.expand_dims(x_test, axis=2)
 
 # %% CLR parameters
 batch_size = 16
-epochs = 35
-max_m = 0.98
-base_m = 0.85
-
-# calling it 
-clr = CLR(cyc = 2,
+epochs = 15
+clr = CLR(cyc=2,
             lr_range=(0.01, 0.00005),
             momentum_range=(0.85, 0.98),
-            reset_on_train_begin=True,
             record_frq=10)
 
 clr.test_run(epochs)
@@ -82,27 +80,24 @@ plt.savefig("Network/LR_schedule.pdf", bbox_inches='tight')
 
 
 # %% Train TCN
-
 model = compiled_tcn(return_sequences=False,
                     num_feat=x_train.shape[2],
                     num_classes=7,
                     nb_filters=64,
                     kernel_size=8,
                     dilations=[2 ** i for i in range(8)], 
-                    nb_stacks=2,
+                    nb_stacks=1,
                     dropout_rate=0.2,
                     use_batch_norm=True,
                     max_len=x_train[0:1].shape[1],
                     use_skip_connections=True,
                     use_layer_norm=True,
-                    opt='rmsprop')
-
+                    opt='adam')
 model.summary()
 cnnhistory = model.fit(x_train, y_train,
                         batch_size = batch_size,
                         validation_data=(x_test, y_test),
-                        epochs = epochs,
-                        callbacks=[clr])
+                        epochs = epochs)
 
 
 # %% Save it all
@@ -114,8 +109,7 @@ with open('Network/model.json', "w") as json_file:
 model.save_weights('Network/weights.h5')
 
 
-
-# %%
+# %% Plot accuracy n loss
 h = plt.figure()
 plt.plot(cnnhistory.history['loss'])
 plt.plot(cnnhistory.history['val_loss'])
@@ -140,8 +134,7 @@ plt.show()
 h.savefig("Network/Accuracy.pdf", bbox_inches='tight')
 
 
-
-# %% load model 
+# %% reload saved model 
 # load model from file
 loaded_json = open('Network/model.json', 'r').read()
 reloaded_model = model_from_json(loaded_json, custom_objects={'TCN': TCN})
@@ -150,17 +143,19 @@ reloaded_model = model_from_json(loaded_json, custom_objects={'TCN': TCN})
 reloaded_model.load_weights('Network/weights.h5')
 
 
-
 # %% Confusion Matrix
 lb = LabelEncoder()
-pred = np.round(model.predict(x_test, verbose=1))
+pred = np.round(reloaded_model.predict(x_test, verbose=1))
 pred = pred.squeeze().argmax(axis=1)
 new_y_test = y_test.astype(int)
 
 mtx = confusion_matrix(new_y_test, pred)
-
+labels = ['Angry', 'Disgusted', 'Fearful', 'Happy', 'Neutral', 'Sad', 'Surprised']
 h = plt.figure()
-sb.heatmap(mtx, annot = True, fmt ='d')
+sb.heatmap(mtx, annot = True, fmt ='d',
+           yticklabels=labels,
+           xticklabels=labels,
+           cbar=False)
 plt.title('Confusion matrix')
 h.savefig("Network/Confusion.pdf", bbox_inches='tight')
 
