@@ -26,4 +26,4 @@
 
 *@ Federal University of Santa Maria - Brazil.*
 
-![alt text](https://github.com/davircarvalho/AEmotion/blob/main/Network/Accuracy.pdf?raw=true)
+![alt text](/Network/Accuracy.pdf?raw=true)
