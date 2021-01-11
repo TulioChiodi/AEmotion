@@ -54,7 +54,7 @@ for i in range(0, numdevices):
 
 # %% Time streaming
 RATE = 44100 # Sample rate
-CHUNK = RATE*3 # Frame size
+CHUNK = RATE*5 # Frame size
 
 print('janela de análise da RNN é de: {0} segundos'.format(CHUNK/RATE))
 #input stream setup
@@ -63,14 +63,16 @@ stream=p.open(format = pyaudio.paInt16,rate=RATE,channels=1, input_device_index 
 # tocador
 # player = p.open(format=pyaudio.paInt16, channels=1, rate=RATE, output=True, frames_per_buffer=CHUNK)
 labels = ['Raiva', 'Nojo', 'Medo', 'Feliz', 'Neutro', 'Triste', 'Surpresa']
+history_pred = []
 while True:
-    data=np.fromstring(stream.read(CHUNK,exception_on_overflow = False),dtype=np.float16)
+    data=np.fromstring(stream.read(CHUNK,exception_on_overflow = False),dtype=np.float32)
     data = np.nan_to_num(np.array(data))
     x_infer = input_prep(data)
     pred = np.round(model.predict(x_infer, verbose=0))
     predi = pred.argmax(axis=1)
+    history_pred = np.append(history_pred, predi[0])
     print(labels[predi[0]])
-# print(max(data))
+    print(max(data))
 # player.write(data,CHUNK)
 
 stream.stop_stream()
