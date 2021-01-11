@@ -28,9 +28,8 @@ import seaborn as sb
 
 
 # %% load dataset
-f = open('features.pckl', 'rb')
-X, y = pickle.load(f)
-f.close()
+with open('features.pckl', 'rb') as f:
+    X, y = pickle.load(f)
 
 # %% Filter inputs and targets
 # Split between train and test 
@@ -50,9 +49,9 @@ def scale_dataset(x_in, mean=None, std=None):
 x_train, mean_in, std_in = scale_dataset(x_train)
 x_test = scale_dataset(x_test, mean_in, std_in)[0]
 
-f = open('Network/input_preprocess.pckl', 'wb')
-pickle.dump([mean_in, std_in], f)
-f.close()
+# save for  inference
+with open('Network/input_preprocess.pckl', 'wb') as f:
+    pickle.dump([mean_in, std_in], f)
 
 # %% Reshape to keras tensor
 x_train = np.expand_dims(x_train, axis=2)
