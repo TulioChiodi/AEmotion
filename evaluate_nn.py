@@ -31,7 +31,7 @@ def scale_dataset(x_in, mean=None, std=None):
 
 f = open('input_preprocess.pckl', 'rb')
 mean_in, std_in = pickle.load(f)
-x_test = scale_dataset(x_test, mean_in, std_in)[0]
+x_t = scale_dataset(x_test, mean_in, std_in)[0]
 
 
 # %% load saved model 

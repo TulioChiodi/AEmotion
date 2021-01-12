@@ -18,14 +18,14 @@ from tensorflow.keras.layers import Dense, Dropout, Embedding
 from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.models import load_model, model_from_json
-print("Tensorflow - Número de GPUs encontradas: ", len(tf.config.experimental.list_physical_devices('GPU')) )
+# print("Tensorflow - Número de GPUs encontradas: ", len(tf.config.experimental.list_physical_devices('GPU')) )
 
 # utils
 import numpy as np
 import pickle
 import matplotlib.pyplot as plt
 import seaborn as sb
-
+from sklearn.preprocessing import MinMaxScaler
 
 # %% load dataset
 with open('features.pckl', 'rb') as f:
@@ -44,6 +44,8 @@ def scale_dataset(x_in, mean=None, std=None):
         mean = np.mean(x_in, axis=0)
         std = np.std(x_in, axis=0)
     y_out = (x_in - mean)/std
+    scaler = MinMaxScaler(feature_range=(0,1))
+    y_out = scaler.fit_transform(y_out)
     return y_out, mean, std
 
 x_train, mean_in, std_in = scale_dataset(x_train)
@@ -68,7 +70,7 @@ x_test = np.expand_dims(x_test, axis=2)
 
 # %% CLR parameters
 batch_size = 16
-epochs = 15
+epochs = 20
 clr = CLR(cyc=2,
             lr_range=(0.01, 0.00005),
             momentum_range=(0.85, 0.98),
@@ -86,7 +88,7 @@ model = compiled_tcn(return_sequences=False,
                     kernel_size=8,
                     dilations=[2 ** i for i in range(8)], 
                     nb_stacks=1,
-                    dropout_rate=0.2,
+                    dropout_rate=0.25,
                     use_batch_norm=True,
                     max_len=x_train[0:1].shape[1],
                     use_skip_connections=True,
