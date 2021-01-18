@@ -71,13 +71,13 @@ x_test = np.expand_dims(x_test, axis=2)
 # %% CLR parameters
 batch_size = 16
 epochs = 20
-clr = CLR(cyc=2,
-            lr_range=(0.01, 0.00005),
-            momentum_range=(0.85, 0.98),
-            record_frq=10)
+# clr = CLR(cyc=2,
+#             lr_range=(0.01, 0.00005),
+#             momentum_range=(0.85, 0.98),
+#             record_frq=10)
 
-clr.test_run(epochs)
-plt.savefig("Network/LR_schedule.pdf", bbox_inches='tight')
+# clr.test_run(epochs)
+# plt.savefig("Network/LR_schedule.pdf", bbox_inches='tight')
 
 
 # %% Train TCN
@@ -85,7 +85,7 @@ model = compiled_tcn(return_sequences=False,
                     num_feat=x_train.shape[2],
                     num_classes=7,
                     nb_filters=64,
-                    kernel_size=8,
+                    kernel_size=7,
                     dilations=[2 ** i for i in range(8)], 
                     nb_stacks=1,
                     dropout_rate=0.25,
@@ -161,4 +161,3 @@ plt.title('Confusion matrix')
 h.savefig("Network/Confusion.pdf", bbox_inches='tight')
 
 
-# %%

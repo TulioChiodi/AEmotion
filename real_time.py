@@ -10,7 +10,7 @@ import librosa
 from tensorflow.keras.models import model_from_json
 from tcn import TCN
 from sklearn.preprocessing import MinMaxScaler
-
+import matplotlib.pyplot as plt
 
 # %% load saved model 
 with open("Network/model.json", 'r') as json_file:
@@ -23,23 +23,19 @@ model.load_weights('Network/weights.h5')
 
 
 # %% Pre-process input
-with open('input_preprocess.pckl', 'rb') as f:
+with open('Network/input_preprocess.pckl', 'rb') as f:
     mean_in, std_in = pickle.load(f)
 
-def scale_dataset(x_in, mean, std):
-    y_out = (x_in - mean)/std
-    scaler = MinMaxScaler(feature_range=(0,1))
-    y_out = np.expand_dims(y_out, axis=0)
-    y_out = scaler.fit_transform(y_out)
-    return y_out
-
-def input_prep(data):
-    global RATE, mean_in, std_in
+def input_prep(data, RATE, mean, std):
     # Obtain mfcss
+    scaler = MinMaxScaler(feature_range=(-1, 1))
+    data = np.squeeze(scaler.fit_transform(np.expand_dims(data, axis=1)))
     mfccs = np.mean(librosa.feature.mfcc(y=data, sr=RATE,
-                                         n_mfcc=40).T, axis=0)
-    y = scale_dataset(mfccs, mean_in, std_in)   
-    return y
+                                         n_mfcc=40).T, axis=0) 
+    y = (mfccs - mean)/std
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    y = scaler.fit_transform(np.expand_dims(y, axis=1))
+    return np.expand_dims(y, axis=0)
 
 
 # %% Identificar dispositivos de audio do sistema
@@ -54,28 +50,46 @@ for i in range(0, numdevices):
 
 # %% Time streaming
 RATE = 44100 # Sample rate
-CHUNK = RATE*3 # Frame size
+CHUNK = RATE*4 # Frame size
 
 print('janela de análise da RNN é de: {0} segundos'.format(CHUNK/RATE))
 #input stream setup
 # pyaudio.paInt16 : representa resolução em 16bit 
-stream=p.open(format = pyaudio.paInt16,rate=RATE,channels=1, input_device_index = 1, input=True, frames_per_buffer=CHUNK)
+stream=p.open(format = pyaudio.paInt16,
+                       rate=RATE,
+                       channels=2, 
+                       input_device_index = 1,
+                       input=True, 
+                       frames_per_buffer=CHUNK)
 # tocador
 # player = p.open(format=pyaudio.paInt16, channels=1, rate=RATE, output=True, frames_per_buffer=CHUNK)
-labels = ['Raiva', 'Nojo', 'Medo', 'Feliz', 'Neutro', 'Triste', 'Surpresa']
+labels = ['Irritado', 'Nojo', 'Medo', 'Feliz', 'Neutro', 'Triste', 'Surpresa']
 history_pred = []
 while True:
-    data = np.fromstring(stream.read(CHUNK,exception_on_overflow = False),dtype=np.float32)
+    data = np.fromstring(stream.read(CHUNK),dtype=np.int16)
     data = np.nan_to_num(np.array(data))
-    x_infer = input_prep(data)
+    x_infer = input_prep(data, RATE, mean_in, std_in)
     pred = np.round(model.predict(x_infer, verbose=0))
-    predi = pred.argmax(axis=1)
-    history_pred = np.append(history_pred, predi[0])
-    print(labels[predi[0]])
-    print(max(x_infer))
+    if pred.any() != 0:
+        predi = pred.argmax(axis=1)
+        history_pred = np.append(history_pred, predi[0])
+        print(labels[predi[0]] + "  --  Amplitude normalizada: " + str(max(x_infer[0,:,0])))
+    # else:
+    #     print("Err: Couldn't predict") 
+
 # player.write(data,CHUNK)
 
 stream.stop_stream()
 stream.close()
 p.terminate()
+
+# %% Plot history 
+
+plt.figure()
+plt.plot(history_pred)
+plt.yticks(range(0,7) , labels=labels)
+plt.xlabel('Iteração')
+plt.ylabel('Emoção')
+plt.title('Histórico')
+
 # %%

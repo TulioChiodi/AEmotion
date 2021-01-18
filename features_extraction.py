@@ -4,10 +4,12 @@ import os
 import numpy as np
 import time
 import pickle
+from sklearn.preprocessing import MinMaxScaler
 
 
 # %% Load data
 def load_data(path):
+  scaler = MinMaxScaler(feature_range=(-1, 1))
   X = []
   lst = []
   cnt = 0
@@ -19,9 +21,12 @@ def load_data(path):
     print(i)
     for file in files:
           #Load librosa array, obtain mfcss, add them to array and then to list.
-          X, sample_rate = librosa.load(os.path.join(subdir,file),
-                                        res_type='kaiser_fast')
-          mfccs = np.mean(librosa.feature.mfcc(y=X, sr=sample_rate,
+          data, sample_rate = librosa.load(os.path.join(subdir,file),
+                                          res_type='kaiser_best')
+          
+          data = np.squeeze(scaler.fit_transform(np.expand_dims(data, axis=1)))
+
+          mfccs = np.mean(librosa.feature.mfcc(y=data, sr=sample_rate,
                                               n_mfcc=40).T, axis=0)
           arr = mfccs, i
           lst.append(arr)
@@ -43,3 +48,5 @@ if __name__ == "__main__":
   f.close()
   print("All done!")
 
+
+# %%
