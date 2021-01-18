@@ -11,6 +11,8 @@ from tensorflow.keras.models import model_from_json
 from tcn import TCN
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
+from datetime import datetime as dtime
+
 
 # %% load saved model 
 with open("Network/model.json", 'r') as json_file:
@@ -50,9 +52,9 @@ for i in range(0, numdevices):
 
 # %% Time streaming
 RATE = 44100 # Sample rate
-CHUNK = RATE*4 # Frame size
+CHUNK = RATE*3 # Frame size
 
-print('janela de análise da RNN é de: {0} segundos'.format(CHUNK/RATE))
+print('janela de análise é de: {0} segundos'.format(CHUNK/RATE))
 #input stream setup
 # pyaudio.paInt16 : representa resolução em 16bit 
 stream=p.open(format = pyaudio.paInt16,
@@ -63,8 +65,9 @@ stream=p.open(format = pyaudio.paInt16,
                        frames_per_buffer=CHUNK)
 # tocador
 # player = p.open(format=pyaudio.paInt16, channels=1, rate=RATE, output=True, frames_per_buffer=CHUNK)
-labels = ['Irritado', 'Nojo', 'Medo', 'Feliz', 'Neutro', 'Triste', 'Surpresa']
+labels = ['Irritado(a)', 'Aversão', 'Medo', 'Alegre', 'Neutro', 'Triste', 'Surpresa']
 history_pred = []
+hist_time = []
 while True:
     data = np.fromstring(stream.read(CHUNK),dtype=np.int16)
     data = np.nan_to_num(np.array(data))
@@ -73,7 +76,8 @@ while True:
     if pred.any() != 0:
         predi = pred.argmax(axis=1)
         history_pred = np.append(history_pred, predi[0])
-        print(labels[predi[0]] + "  --  Amplitude normalizada: " + str(max(x_infer[0,:,0])))
+        hist_time = np.append(hist_time, dtime.now().strftime('%H:%M:%S'))
+        print(labels[predi[0]] + "  --  (data peak: " + str(max(data))+")")
     # else:
     #     print("Err: Couldn't predict") 
 
@@ -86,10 +90,14 @@ p.terminate()
 # %% Plot history 
 
 plt.figure()
-plt.plot(history_pred)
+plt.scatter(range(0,len(history_pred)), history_pred)
 plt.yticks(range(0,7) , labels=labels)
-plt.xlabel('Iteração')
+plt.xticks(range(0,len(history_pred)) , labels=hist_time, rotation=75)
+
+plt.xlabel('Tempo (H:M:S)')
 plt.ylabel('Emoção')
 plt.title('Histórico')
+plt.grid()
+plt.show()
 
 # %%

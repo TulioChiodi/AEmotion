@@ -1,4 +1,6 @@
-# train NN to classify speech emotion 
+"""
+AEmotion: Audio based NN to classify speech emotion 
+"""
 
 # %% import stuff
 # sklearn
@@ -33,11 +35,11 @@ with open('features.pckl', 'rb') as f:
 
 # %% Filter inputs and targets
 # Split between train and test 
-x_train, x_test, y_train, y_test = train_test_split(X,
-                                                    y,
+x_train, x_test, y_train, y_test = train_test_split(X,y,
                                                     test_size=0.33,
                                                     shuffle=True,
                                                     random_state=42)
+
 # %% Input normalization
 def scale_dataset(x_in, mean=None, std=None):
     if mean is None or std is None:
@@ -54,6 +56,7 @@ x_test = scale_dataset(x_test, mean_in, std_in)[0]
 # save for  inference
 with open('Network/input_preprocess.pckl', 'wb') as f:
     pickle.dump([mean_in, std_in], f)
+
 
 # %% Reshape to keras tensor
 x_train = np.expand_dims(x_train, axis=2)
@@ -86,8 +89,8 @@ model = compiled_tcn(return_sequences=False,
                     num_classes=7,
                     nb_filters=64,
                     kernel_size=7,
-                    dilations=[2 ** i for i in range(8)], 
-                    nb_stacks=1,
+                    dilations=[2 ** i for i in range(7)], 
+                    nb_stacks=2,
                     dropout_rate=0.25,
                     use_batch_norm=True,
                     max_len=x_train[0:1].shape[1],
