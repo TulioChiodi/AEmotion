@@ -48,8 +48,7 @@ x_t = np.expand_dims(x_t, axis=2)
 
 
 # %% Prediction
-pred = np.round(model.predict(x_t, verbose=0))
-print(pred)
+pred = model.predict(x_t)
 labels = ['Irritado', 'Nojo', 'Medo', 'Feliz', 'Neutro', 'Triste', 'Surpresa']
 predi = pred.argmax(axis=1)
 for i, n in enumerate(predi):
