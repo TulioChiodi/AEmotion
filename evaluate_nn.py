@@ -1,4 +1,6 @@
-
+'''
+ Test AEmotion offline performance
+'''
 # %% Import
 from tcn import TCN
 from tensorflow.keras.models import model_from_json
@@ -29,8 +31,11 @@ lst = load_data(test_data_path)
 
 # %% scale data
 # Array conversion
-x_test, y = zip(*lst)
-x_test = np.asarray(x_test)
+# x_test, y = zip(*lst)
+# x_test = np.asarray(x_test)
+with open('features.pckl', 'rb') as f:
+    x_test, y = pickle.load(f)
+
 def scale_dataset(x_in, mean=None, std=None):
     if mean is None or std is None:
         mean = np.mean(x_in, axis=0)

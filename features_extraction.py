@@ -6,17 +6,15 @@ import time
 import pickle
 from sklearn.preprocessing import MinMaxScaler
 
-
 # %% Load data
+
 def load_data(path):
-  scaler = MinMaxScaler(feature_range=(-1, 1))
-  X = []
+  scaler = MinMaxScaler(feature_range=(-1,1))
   lst = []
-  cnt = 0
   i = -2
   start_time = time.time()
   for subdir, dirs, files in os.walk(path):
-    i=i+1
+    i+=1
     print(subdir)
     print(i)
     for file in files:
@@ -24,8 +22,9 @@ def load_data(path):
           data, sample_rate = librosa.load(os.path.join(subdir,file),
                                           res_type='kaiser_best')
           
-          data = np.squeeze(scaler.fit_transform(np.expand_dims(data, axis=1)))
-
+          # normalize input
+          data = np.divide(data, np.amax(np.absolute(data)))
+          # data = np.squeeze(scaler.fit_transform(np.expand_dims(data, axis=1)))
           mfccs = np.mean(librosa.feature.mfcc(y=data, sr=sample_rate,
                                               n_mfcc=40).T, axis=0)
           arr = mfccs, i
@@ -43,7 +42,7 @@ if __name__ == "__main__":
   # Array conversion
   X, y = zip(*lst)
   X, y = np.asarray(X), np.asarray(y)
-  f = open('features.pckl', 'wb')
+  f = open('Network/features_en.pckl', 'wb')
   pickle.dump([X, y], f)
   f.close()
   print("All done!")

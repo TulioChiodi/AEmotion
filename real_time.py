@@ -15,23 +15,21 @@ from datetime import datetime as dtime
 
 
 # %% load saved model 
-with open("Network/model.json", 'r') as json_file:
+with open("Network/model_en_it.json", 'r') as json_file:
     loaded_json = json_file.read()
-# loaded_json = open('Network/model.json', 'r').read()
-model = model_from_json(loaded_json, custom_objects={'TCN': TCN})
-
-# restore weights
-model.load_weights('Network/weights.h5')
+    model = model_from_json(loaded_json, custom_objects={'TCN': TCN})
+    # restore weights
+    model.load_weights('Network/weights_en_it.h5')
 
 
 # %% Pre-process input
-with open('Network/input_preprocess.pckl', 'rb') as f:
+with open('Network/input_preprocess_en_it.pckl', 'rb') as f:
     mean_in, std_in = pickle.load(f)
 
 def input_prep(data, RATE, mean, std):
     # Obtain mfcss
-    scaler = MinMaxScaler(feature_range=(-1, 1))
-    data = np.squeeze(scaler.fit_transform(np.expand_dims(data, axis=1)))
+    # normalize input
+    data = np.divide(data, np.amax(np.absolute(data)))
     mfccs = np.mean(librosa.feature.mfcc(y=data, sr=RATE,
                                          n_mfcc=40).T, axis=0) 
     y = (mfccs - mean)/std
@@ -50,9 +48,10 @@ for i in range(0, numdevices):
             print("Input Device id ", i, " - ", p.get_device_info_by_host_api_device_index(0, i).get('name'))
 
 
-# %% Time streaming
+#  Time streaming #############################################
 RATE = 44100 # Sample rate
-CHUNK = RATE*3 # Frame size
+nn_time = 3 # signal length send to the network
+CHUNK = round(RATE*nn_time) # Frame size
 
 print('janela de análise é de: {0} segundos'.format(CHUNK/RATE))
 #input stream setup
@@ -61,11 +60,13 @@ stream=p.open(format = pyaudio.paInt16,
                        rate=RATE,
                        channels=2, 
                        input_device_index = 1,
-                       input=True, 
+                       input=True,  
                        frames_per_buffer=CHUNK)
 # tocador
 # player = p.open(format=pyaudio.paInt16, channels=1, rate=RATE, output=True, frames_per_buffer=CHUNK)
-labels = ['Irritado(a)', 'Aversão', 'Medo', 'Alegre', 'Neutro', 'Triste', 'Surpresa']
+
+labels = ['Irritação', 'Aversão', 'Medo', 'Alegria', 'Neutro', 'Tristeza', 'Surpresa']
+# labels = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprised']
 history_pred = []
 hist_time = []
 while True:
@@ -77,7 +78,7 @@ while True:
         predi = pred.argmax(axis=1)
         history_pred = np.append(history_pred, predi[0])
         hist_time = np.append(hist_time, dtime.now().strftime('%H:%M:%S'))
-        print(labels[predi[0]] + "  --  (data peak: " + str(max(data))+")")
+        print(labels[predi[0]] + "  --  (raw data peak: " + str(max(data))+")")
     # else:
     #     print("Err: Couldn't predict") 
 
@@ -92,7 +93,7 @@ p.terminate()
 plt.figure()
 plt.scatter(range(0,len(history_pred)), history_pred)
 plt.yticks(range(0,7) , labels=labels)
-plt.xticks(range(0,len(history_pred)) , labels=hist_time, rotation=75)
+# plt.xticks(range(0,len(history_pred)) , labels=hist_time, rotation=90)
 
 plt.xlabel('Tempo (H:M:S)')
 plt.ylabel('Emoção')
