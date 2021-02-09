@@ -6,24 +6,26 @@ import pyaudio
 import numpy as np
 import pickle
 import librosa
+import keract
 
 from tensorflow.keras.models import model_from_json
 from tcn import TCN
 from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
+from IPython.display import clear_output
 from datetime import datetime as dtime
 
 
 # %% load saved model 
-with open("Network/model_en_it.json", 'r') as json_file:
+with open("Network/model_en.json", 'r') as json_file:
     loaded_json = json_file.read()
     model = model_from_json(loaded_json, custom_objects={'TCN': TCN})
     # restore weights
-    model.load_weights('Network/weights_en_it.h5')
+    model.load_weights('Network/weights_en.h5')
 
 
 # %% Pre-process input
-with open('Network/input_preprocess_en_it.pckl', 'rb') as f:
+with open('Network/input_preprocess_en.pckl', 'rb') as f:
     mean_in, std_in = pickle.load(f)
 
 def input_prep(data, RATE, mean, std):
@@ -58,15 +60,15 @@ print('janela de análise é de: {0} segundos'.format(CHUNK/RATE))
 # pyaudio.paInt16 : representa resolução em 16bit 
 stream=p.open(format = pyaudio.paInt16,
                        rate=RATE,
-                       channels=2, 
+                       channels=1, 
                        input_device_index = 1,
                        input=True,  
                        frames_per_buffer=CHUNK)
 # tocador
 # player = p.open(format=pyaudio.paInt16, channels=1, rate=RATE, output=True, frames_per_buffer=CHUNK)
 
-labels = ['Irritação', 'Aversão', 'Medo', 'Alegria', 'Neutro', 'Tristeza', 'Surpresa']
-# labels = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprised']
+# labels = ['Irritação', 'Aversão', 'Medo', 'Alegria', 'Neutro', 'Tristeza', 'Surpresa']
+labels = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprised']
 history_pred = []
 hist_time = []
 while True:
@@ -78,27 +80,36 @@ while True:
         predi = pred.argmax(axis=1)
         history_pred = np.append(history_pred, predi[0])
         hist_time = np.append(hist_time, dtime.now().strftime('%H:%M:%S'))
-        print(labels[predi[0]] + "  --  (raw data peak: " + str(max(data))+")")
-    # else:
-    #     print("Err: Couldn't predict") 
+        # print(labels[predi[0]] + "  --  (raw data peak: " + str(max(data))+")")
+        
+        layername = 'activation' 
+        l_weights = keract.get_activations(model, x_infer, layer_names=layername)
+        clear_output(wait=True)
+        plt.plot(np.squeeze(l_weights[layername]), 'r-')
+        plt.title(labels[predi[0]])
+        plt.yticks(ticks=np.arange(0,1.1,0.1))
+        plt.xticks(ticks=np.arange(0,7), labels=labels)
+        plt.xlabel('Emotion')
+        plt.ylabel('NN certainty')
+        plt.grid()
+        plt.show()
 
-# player.write(data,CHUNK)
-
-stream.stop_stream()
-stream.close()
-p.terminate()
 
 # %% Plot history 
 
-plt.figure()
+h=plt.figure()
 plt.scatter(range(0,len(history_pred)), history_pred)
 plt.yticks(range(0,7) , labels=labels)
 # plt.xticks(range(0,len(history_pred)) , labels=hist_time, rotation=90)
 
-plt.xlabel('Tempo (H:M:S)')
-plt.ylabel('Emoção')
-plt.title('Histórico')
+
+plt.xlabel('Time (each dot represents a ' +str(nn_time)+ 's iteration)')
+plt.ylabel('Emotion')
+plt.title('AEmotion classification')
 plt.grid()
 plt.show()
+h.savefig("Network/hist.pdf", bbox_inches='tight')
+
+
 
 # %%

@@ -1,7 +1,6 @@
 """
 AEmotion: Audio based NN to classify speech emotion 
 """
-
 # %% import stuff
 # sklearn
 from sklearn import metrics
@@ -13,22 +12,26 @@ from sklearn.preprocessing import MinMaxScaler
 # Network
 from tcn import TCN, compiled_tcn
 from tensorflow.keras.models import model_from_json
+from tensorflow.keras.layers import Input, Dense, Dropout
+from tensorflow.keras import Model, Sequential
 
 # utils
 import numpy as np
 import pickle
 import matplotlib.pyplot as plt
 import seaborn as sb
+import keract
+
 
 # %% load dataset
-with open('Network/features_en_it.pckl', 'rb') as f:
+with open('Network/features_en.pckl', 'rb') as f:
     X, y = pickle.load(f)
 
 
 # %% Filter inputs and targets
 # Split between train and test 
 x_train, x_test, y_train, y_test = train_test_split(X,y,
-                                                    test_size=0.3,
+                                                    test_size=0.2,
                                                     shuffle=True,
                                                     random_state=42)
 
@@ -46,24 +49,17 @@ x_train, mean_in, std_in = scale_dataset(x_train)
 x_test = scale_dataset(x_test, mean_in, std_in)[0]
 
 # save for  inference
-with open('Network/input_preprocess_en_it.pckl', 'wb') as f:
+with open('Network/input_preprocess_en.pckl', 'wb') as f:
     pickle.dump([mean_in, std_in], f)
-
 
 #  Reshape to keras tensor
 x_train = np.expand_dims(x_train, axis=2)
 x_test = np.expand_dims(x_test, axis=2)
 x_train = x_train.astype('float32')
 x_test = x_test.astype('float32')
- 
-# lb = LabelEncoder()
-# y_train = to_categorical(lb.fit_transform(y_train))
-# y_test = to_categorical(lb.fit_transform(y_test))
-# y_train = np.expand_dims(y_train, axis=2)
-# y_test = np.expand_dims(y_test, axis=2)
 
 
-# %% Train TCN
+# %% Create TCN
 model = compiled_tcn(return_sequences=False,
                     num_feat=x_train.shape[2],
                     num_classes=len(np.unique(y_train)),
@@ -79,55 +75,59 @@ model = compiled_tcn(return_sequences=False,
                     opt='adam')
 model.summary()
 
-
-# %% Train
+#  Train
 cnnhistory = model.fit(x_train, y_train,
                         batch_size = 16,
                         validation_data=(x_test, y_test),
-                        epochs = 20,
+                        epochs = 10,
                         verbose = 1)
+
 
 # %% Save it all
 # get model as json string and save to file
 model_as_json = model.to_json()
-with open('Network/model_en_it.json', "w") as json_file:
+with open('Network/model_en.json', "w") as json_file:
     json_file.write(model_as_json)
-# save weights to file (for this format, need h5py installed)
-model.save_weights('Network/weights_en_it.h5')
+    # save weights to file (for this format, need h5py installed)
+    model.save_weights('Network/weights_en.h5')
+
+
+
+
 
 
 # %% Plot accuracy n loss
-h = plt.figure()
-plt.plot(cnnhistory.history['loss'])
-plt.plot(cnnhistory.history['val_loss'])
-plt.title('Loss')
-plt.ylabel('loss')
-plt.xlabel('epoch')
-plt.legend(['Train', 'Test'], loc='upper right')
-plt.grid()
-plt.show()
-h.savefig("Network/Loss.pdf", bbox_inches='tight')
+# h = plt.figure()
+# plt.plot(cnnhistory.history['loss'])
+# plt.plot(cnnhistory.history['val_loss'])
+# plt.title('Loss')
+# plt.ylabel('loss')
+# plt.xlabel('epoch')
+# plt.legend(['Train', 'Test'], loc='upper right')
+# plt.grid()
+# plt.show()
+# h.savefig("Network/Loss.pdf", bbox_inches='tight')
 
 
-h = plt.figure()
-plt.plot(cnnhistory.history['accuracy'])
-plt.plot(cnnhistory.history['val_accuracy'])
-plt.title('Accuracy')
-plt.ylabel('accuracy')
-plt.xlabel('epoch')
-plt.legend(['Train', 'Test'], loc='lower right')
-plt.grid()
-plt.show()
-h.savefig("Network/Accuracy.pdf", bbox_inches='tight')
+# h = plt.figure()
+# plt.plot(cnnhistory.history['accuracy'])
+# plt.plot(cnnhistory.history['val_accuracy'])
+# plt.title('Accuracy')
+# plt.ylabel('accuracy')
+# plt.xlabel('epoch')
+# plt.legend(['Train', 'Test'], loc='lower right')
+# plt.grid()
+# plt.show()
+# h.savefig("Network/Accuracy.pdf", bbox_inches='tight')
 
 
 # %% reload saved model 
 # load model from file
-loaded_json = open('Network/model_en_it.json', 'r').read()
-reloaded_model = model_from_json(loaded_json, custom_objects={'TCN': TCN})
+# loaded_json = open('Network/model_en_it.json', 'r').read()
+# reloaded_model = model_from_json(loaded_json, custom_objects={'TCN': TCN})
 
-# restore weights
-reloaded_model.load_weights('Network/weights_en_it.h5')
+# # restore weights
+# reloaded_model.load_weights('Network/weights_en_it.h5')
 
 
 # %% Confusion Matrix
@@ -148,5 +148,14 @@ plt.title('Confusion matrix')
 h.savefig("Network/Confusion.pdf", bbox_inches='tight')
 
 
+
+# %%
+x = np.expand_dims(x_test[2,:,:], 0)
+x.shape
+
+l_weights = keract.get_activations(model, x, layer_names='activation')
+
+plt.figure()
+plt.plot(np.squeeze(l_weights['activation']))
 
 # %%
