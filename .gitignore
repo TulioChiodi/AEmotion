@@ -1,8 +1,8 @@
-.vs
+.vs/
 .ipynb_checkpoints/
 __pycache__/
 preprocessing_playground.ipynb
-dataset
+dataset/
 mel_spectrograms.ipynb
 Haytham_Fayek_Guide_filterbanks_mel.ipynb
 *.zip
