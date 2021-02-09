@@ -26,3 +26,6 @@
 
 *@ Federal University of Santa Maria - Brazil.*
 
+![Alt text](Network/Accuracy.png?raw=true "Title")
+
+![Alt text](Network/Confusion.png?raw=true "Title")
