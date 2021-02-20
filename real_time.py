@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 from IPython.display import clear_output
 from datetime import datetime as dtime
 
-from pahoclass import paho_client
+# from pahoclass import paho_client
 
 # %% load saved model 
 with open("Network/model_en.json", 'r') as json_file:
@@ -41,13 +41,8 @@ def input_prep(data, RATE, mean, std):
     return np.expand_dims(y, axis=0)
 
 
-# %% Inicializar client MQTT
-mqtt_client = paho_client("participants", "prp1nterac", "146.164.26.62", 2494)
-
-
 # %% Identificar dispositivos de audio do sistema
 p = pyaudio.PyAudio()
-
 info = p.get_host_api_info_by_index(0)
 numdevices = info.get('deviceCount')
 for i in range(0, numdevices):
@@ -84,7 +79,7 @@ while True:
         predi = pred.argmax(axis=1)
         history_pred = np.append(history_pred, predi[0])
         # hist_time = np.append(hist_time, dtime.now().strftime('%H:%M:%S'))
-        print(labels[predi[0]] + "  --  (raw data peak: " + str(max(data))+")")
+        # print(labels[predi[0]] + "  --  (raw data peak: " + str(max(data))+")")
         
         # GET ACTIVATIONS
         layername = 'activation' 
@@ -92,18 +87,19 @@ while True:
         w_values = np.squeeze(l_weights[layername])
 
         # SEND TO MQTT BrOKER
-        for k in range(len(labels)):
-            mqtt_client.publish_single(float(w_values[k]), topic=labels[k])
+        # for k in range(len(labels)):
+        #     mqtt_client.publish_single(float(w_values[k]), topic=labels[k])
 
-        # clear_output(wait=True)
-        # plt.plot(w_values, 'r-')
-        # plt.title(labels[predi[0]])
-        # plt.yticks(ticks=np.arange(0,1.1,0.1))
-        # plt.xticks(ticks=np.arange(0,7), labels=labels)
-        # plt.xlabel('Emotion')
-        # plt.ylabel('NN certainty')
-        # plt.grid()
-        # plt.show()
+        # plot
+        clear_output(wait=True)
+        plt.plot(w_values, 'b-')
+        plt.title(labels[predi[0]])
+        plt.yticks(ticks=np.arange(0,1.1,0.1))
+        plt.xticks(ticks=np.arange(0,7), labels=labels)
+        plt.xlabel('Emotion')
+        plt.ylabel('NN certainty')
+        plt.grid()
+        plt.show()  
 
 
 # %% Plot history 
@@ -121,6 +117,3 @@ plt.grid()
 plt.show()
 h.savefig("Network/hist.pdf", bbox_inches='tight')
 
-
-
-# %%

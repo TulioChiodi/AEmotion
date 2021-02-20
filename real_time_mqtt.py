@@ -100,9 +100,9 @@ history_pred = []
 hist_time = []
 
 client.loop_start() #start the loop
-print("Subscribing to topic","hiper/davitulio13")
-client.subscribe("hiper/davitulio13")
-print("Publishing message to topic","hiper/davitulio13")
+# print("Subscribing to topic","hiper/davitulio13")
+# client.subscribe("hiper/davitulio13")
+# print("Publishing message to topic","hiper/davitulio13")
 
 while True:
     data = np.frombuffer(stream.read(CHUNK),dtype=np.int16)
@@ -114,10 +114,18 @@ while True:
         history_pred = np.append(history_pred, predi[0])
         hist_time = np.append(hist_time, dtime.now().strftime('%H:%M:%S'))
         # print(labels[predi[0]] + "  --  (raw data peak: " + str(max(data))+")")
-        print(labels[predi[0]])
-        client.publish("hiper/davitulio13",labels[predi[0]])
-        # layername = 'activation' 
-        # l_weights = keract.get_activations(model, x_infer, layer_names=layername)
+        # print(labels[predi[0]])
+        
+
+        # GET ACTIVATIONS
+        layername = 'activation' 
+        l_weights = keract.get_activations(model, x_infer, layer_names=layername)
+        w_values = np.squeeze(l_weights[layername])
+
+        # SEND TO MQTT BrOKER
+        for k in range(len(labels)):
+            client.publish("labinter/"+labels[k], float(w_values[k]))
+
         # clear_output(wait=True)
         # plt.plot(np.squeeze(l_weights[layername]), 'r-')
         # plt.title(labels[predi[0]])
