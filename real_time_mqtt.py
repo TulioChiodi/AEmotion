@@ -15,7 +15,33 @@ import matplotlib.pyplot as plt
 from IPython.display import clear_output
 from datetime import datetime as dtime
 
-# from pahoclass import paho_client
+import paho.mqtt.client as mqtt #import the client1
+import time
+
+
+def on_message(client, userdata, message):
+    print("message received " ,str(message.payload.decode("utf-8")))
+    print("message topic=",message.topic)
+    # print("message qos=",message.qos)
+    # print("message retain flag=",message.retain)
+
+
+def on_log(client, userdata, level, buf):
+    print("log: ",buf)
+
+
+broker_address="146.164.26.62"
+broker_port = 2494
+keepalive = 60
+
+print("creating new instance")
+client = mqtt.Client("P1") #create new instance
+client.on_message=on_message #attach function to callback
+# client.on_log=on_log
+client.username_pw_set("participants", "prp1nterac")
+print("connecting to broker")
+client.connect(broker_address, broker_port, keepalive)
+
 
 # %% load saved model 
 with open("Network/model_en.json", 'r') as json_file:
@@ -43,6 +69,7 @@ def input_prep(data, RATE, mean, std):
 
 # %% Identificar dispositivos de audio do sistema
 p = pyaudio.PyAudio()
+
 info = p.get_host_api_info_by_index(0)
 numdevices = info.get('deviceCount')
 for i in range(0, numdevices):
@@ -64,43 +91,51 @@ stream=p.open(format = pyaudio.paInt16,
                        input_device_index = 1,
                        input=True,  
                        frames_per_buffer=CHUNK)
-
+# tocador
+# player = p.open(format=pyaudio.paInt16, channels=1, rate=RATE, output=True, frames_per_buffer=CHUNK)
 
 # labels = ['Irritação', 'Aversão', 'Medo', 'Alegria', 'Neutro', 'Tristeza', 'Surpresa']
 labels = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprised']
 history_pred = []
 hist_time = []
+
+client.loop_start() #start the loop
+# print("Subscribing to topic","hiper/davitulio13")
+# client.subscribe("hiper/davitulio13")
+# print("Publishing message to topic","hiper/davitulio13")
+
 while True:
-    data = np.fromstring(stream.read(CHUNK),dtype=np.int16)
+    data = np.frombuffer(stream.read(CHUNK),dtype=np.int16)
     data = np.nan_to_num(np.array(data))
     x_infer = input_prep(data, RATE, mean_in, std_in)
     pred = np.round(model.predict(x_infer, verbose=0))
     if pred.any() != 0:
         predi = pred.argmax(axis=1)
         history_pred = np.append(history_pred, predi[0])
-        # hist_time = np.append(hist_time, dtime.now().strftime('%H:%M:%S'))
+        hist_time = np.append(hist_time, dtime.now().strftime('%H:%M:%S'))
         # print(labels[predi[0]] + "  --  (raw data peak: " + str(max(data))+")")
+        # print(labels[predi[0]])
         
+
         # GET ACTIVATIONS
         layername = 'activation' 
         l_weights = keract.get_activations(model, x_infer, layer_names=layername)
         w_values = np.squeeze(l_weights[layername])
 
         # SEND TO MQTT BrOKER
-        # for k in range(len(labels)):
-        #     mqtt_client.publish_single(float(w_values[k]), topic=labels[k])
+        for k in range(len(labels)):
+            client.publish("labinter/"+labels[k], float(w_values[k]))
 
-        # plot
-        clear_output(wait=True)
-        plt.plot(w_values, 'b-')
-        plt.title(labels[predi[0]])
-        plt.yticks(ticks=np.arange(0,1.1,0.1))
-        plt.xticks(ticks=np.arange(0,7), labels=labels)
-        plt.xlabel('Emotion')
-        plt.ylabel('NN certainty')
-        plt.grid()
-        plt.show()  
-
+        # clear_output(wait=True)
+        # plt.plot(np.squeeze(l_weights[layername]), 'r-')
+        # plt.title(labels[predi[0]])
+        # plt.yticks(ticks=np.arange(0,1.1,0.1))
+        # plt.xticks(ticks=np.arange(0,7), labels=labels)
+        # plt.xlabel('Emotion')
+        # plt.ylabel('NN certainty')
+        # plt.grid()
+        # plt.show()
+client.loop_stop() #stop the loop
 
 # %% Plot history 
 
@@ -117,3 +152,6 @@ plt.grid()
 plt.show()
 h.savefig("Network/hist.pdf", bbox_inches='tight')
 
+
+
+# %%
