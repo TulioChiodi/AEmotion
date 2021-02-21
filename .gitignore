@@ -7,3 +7,4 @@ mel_spectrograms.ipynb
 Haytham_Fayek_Guide_filterbanks_mel.ipynb
 *.zip
 *.wav
+.vscode/settings.json

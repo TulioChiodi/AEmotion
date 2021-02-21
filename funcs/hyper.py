@@ -19,14 +19,10 @@ def on_message(client, userdata, message):
 
     message_feedback.update(infos)     
 
-    # print("message received: " ,str(message.payload.decode("utf-8")))
-    # print("message topic: ",message.topic)
-    # print("message qos: ",message.qos)
-    # print("message retain flag: ",message.retain)
-
 
 def on_log(client, userdata, level, buf):
     print("log: ",buf)
+
 
 def connect():
     client.on_message=on_message 
@@ -35,24 +31,31 @@ def connect():
     client.loop_start()
     
 
-def send(topic_sub, topic_pub, message):
-    
-    client.subscribe(topic_sub)
+def send(topic_pub, message, output=True):
+    client.subscribe(topic_pub)
     client.publish(topic_pub, message)
     time.sleep(2)
-    print(message_feedback)
+    if output:
+        print(message_feedback)
     
 
 def disconnect():
     client.loop_stop()
 
-# if __name__ == '__main__':
 
-#     message = 'ON'
-#     topic = 'hiper/tulio13'
+if __name__ == '__main__':
 
-#     assert message_feedback, "message_feedback dict is empty, check if you are getting any response."
-#     assert message == message_feedback['message'], f"Message is not {message}, instead: {message_feedback['message']}"
-#     assert topic == message_feedback['topic'], f"topic is not {topic}, instead: {message_feedback['topic']}"
+    print('---- Testing the module ----')
 
-#     print('All good :)')
+    message = 'ON'
+    topic = 'hiper/tulio13'
+
+    connect()
+    send(topic, message, output=False)
+    disconnect()
+
+    assert message_feedback, "message_feedback dict is empty, check if you are getting any response."
+    assert message == message_feedback['message'], f"Message is not {message}, instead: {message_feedback['message']}"
+    assert topic == message_feedback['topic'], f"topic is not {topic}, instead: {message_feedback['topic']}"
+
+    print('All good :)')
