@@ -3,10 +3,9 @@ from funcs import hyper
 hyper.connect()
 
 for i in range(1,4):
-    topic_sub = f"topic/{i}"
     topic_pub = f"topic/{i}"
     message = f"Message: {i}"
-    hyper.send(topic_sub, topic_pub, message)
+    hyper.send(topic_pub, message)
     # You can use hyper.message_feedback variable for the message logging (only lastone)
 
 hyper.disconnect()

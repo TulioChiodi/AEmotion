@@ -31,10 +31,10 @@ def connect():
     client.loop_start()
     
 
-def send(topic_pub, message, output=True):
+def send(topic_pub, message, output=True, sleep=0.2):
     client.subscribe(topic_pub)
     client.publish(topic_pub, message)
-    time.sleep(2)
+    time.sleep(sleep)
     if output:
         print(message_feedback)
     
