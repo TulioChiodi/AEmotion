@@ -1,0 +1,21 @@
+name: testing
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.7
+  - pandas
+  - numpy
+  - matplotlib
+  - librosa
+  - pylint
+  - autopep8
+  - notebook
+  - jupyterlab
+  - seaborn
+  - pyaudio
+  - scikit-learn
+  - pip
+  - pip:
+      - tensorflow
+      - keract
