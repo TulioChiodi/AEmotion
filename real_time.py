@@ -7,6 +7,7 @@ import numpy as np
 import pickle
 import librosa
 import keract
+import time
 
 from tensorflow.keras.models import model_from_json
 from tcn import TCN
@@ -14,6 +15,8 @@ from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 from IPython.display import clear_output
 from datetime import datetime as dtime
+from funcs import hyper
+
 
 # from pahoclass import paho_client
 
@@ -61,7 +64,7 @@ print('janela de análise é de: {0} segundos'.format(CHUNK/RATE))
 stream=p.open(format = pyaudio.paInt16,
                        rate=RATE,
                        channels=1, 
-                       input_device_index = 1,
+                       input_device_index = 11,
                        input=True,  
                        frames_per_buffer=CHUNK)
 
@@ -70,8 +73,12 @@ stream=p.open(format = pyaudio.paInt16,
 labels = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprised']
 history_pred = []
 hist_time = []
+
+# Connecting to Hyperorganicos MQTT broker 
+hyper.connect()
+
 while True:
-    data = np.fromstring(stream.read(CHUNK),dtype=np.int16)
+    data = np.frombuffer(stream.read(CHUNK),dtype=np.int16)
     data = np.nan_to_num(np.array(data))
     x_infer = input_prep(data, RATE, mean_in, std_in)
     pred = np.round(model.predict(x_infer, verbose=0))
@@ -86,23 +93,49 @@ while True:
         l_weights = keract.get_activations(model, x_infer, layer_names=layername)
         w_values = np.squeeze(l_weights[layername])
 
+        rounding = True
+        ndigits = 4 
+
+        if rounding:
+            w_values = [round(item, ndigits) for item in w_values]
+
+        # print(f'final predictions: {w_values}')
+        # print(labels[predi[0]])
+        topic_pub='hiper/labinter0'
+        sleep = 0
+        print(labels[predi[0]])
+        hyper.send(topic_pub='hiper/labinter99', message=labels[predi[0]], output=False, sleep=sleep)
+        for counter, item in enumerate(w_values):
+            # time.sleep(0.2)
+            topic_pub_lane = ''.join([topic_pub,str(counter)])
+            hyper.send(topic_pub=topic_pub_lane, message=str(item), output=False, sleep=sleep)
         # SEND TO MQTT BrOKER
         # for k in range(len(labels)):
         #     mqtt_client.publish_single(float(w_values[k]), topic=labels[k])
 
         # plot
-        clear_output(wait=True)
-        plt.plot(w_values, 'b-')
-        plt.title(labels[predi[0]])
-        plt.yticks(ticks=np.arange(0,1.1,0.1))
-        plt.xticks(ticks=np.arange(0,7), labels=labels)
-        plt.xlabel('Emotion')
-        plt.ylabel('NN certainty')
-        plt.grid()
-        plt.show()  
 
 
-# %% Plot history 
+
+        # clear_output(wait=True)
+        # plt.stem(w_values)
+        # plt.title(labels[predi[0]])
+        # plt.yticks(ticks=np.arange(0,1.1,0.1))
+        # plt.xticks(ticks=np.arange(0,7), labels=labels)
+        # plt.xlabel('Emotion')
+        # plt.ylabel('NN certainty')
+        # plt.grid()
+        # plt.show()  
+
+
+
+
+
+# %% Closing connections and plotting:
+
+hyper.disconnect()
+
+# Plot history 
 
 h=plt.figure()
 plt.scatter(range(0,len(history_pred)), history_pred)

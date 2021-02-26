@@ -7,3 +7,6 @@ mel_spectrograms.ipynb
 Haytham_Fayek_Guide_filterbanks_mel.ipynb
 *.zip
 *.wav
+.vscode/settings.json
+tcn/__pycache__/__init__.cpython-37.pyc
+tcn/__pycache__/tcn.cpython-37.pyc
